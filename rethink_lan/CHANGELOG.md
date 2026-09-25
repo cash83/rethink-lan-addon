@@ -1,3 +1,10 @@
+## 0.2.61
+
+- **Documentazione corretta e tradotta.** Descriveva un blocco di opzioni `auto_setup_*` che non esistono piu': quella funzione e' stata tolta il 22/07/2026 perche' a ogni avvio dell'addon bussava alla porta di provisioning dell'apparecchio e stordiva il modem LG (misurato: 17 minuti per tornare in rete contro 76 secondi senza). Chi copiava quel blocco prendeva un errore di validazione.
+- Corretti i valori di default, che erano rimasti a quelli dell'upstream: `https_port` 443 (non 4433), `mqtts_port` 8883 (non 8884), `mqtt_port` 1886 (non 1884), `hostname` `common.lgthinq.com` (non `rethink.lan`).
+- Documentate le sei opzioni che mancavano: `mqtt_user`, `mqtt_pass`, `discovery_prefix`, `rethink_prefix`, `cloud_style_availability`, `push_program_to_appliance`.
+- Aggiunta la versione inglese (`DOCS.en.md`), con il selettore di lingua.
+
 ## 0.2.60
 
 - **La partenza ritardata non resta piu' appiccicata.** Impostata una volta, restava nel comando di avvio per sempre: il ciclo successivo sarebbe partito ritardato senza che nessuno l'avesse chiesto. Ora si azzera appena l'avvio viene mandato, come fa l'app.

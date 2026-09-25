@@ -1,14 +1,18 @@
 # LG LAN - Documentazione
 
+*[English](DOCS.en.md) · **Italiano***
+
 ## Perche' si chiama ancora rethink-cloud?
 
-Nel repository upstream il server locale si chiama `rethink-cloud.js`, ma non e' un servizio cloud remoto. E' il server locale che emula la parte cloud LG ThinQ dentro la tua rete LAN.
+Il server locale si chiama `rethink-cloud.js`, ma non e' un servizio cloud remoto: e' il
+server che emula la parte cloud di LG ThinQ dentro la tua rete locale.
 
-Questo add-on lo avvia in modalita' LAN. L'opzione `enable_lg_cloud_bridge` e' disattivata di default.
+Questo add-on lo avvia in modalita' LAN. Il ponte verso il cloud LG vero
+(`enable_lg_cloud_bridge`) e' disattivato di default.
 
 ## Dove sta il codice
 
-Il codice di `anszom/rethink` e' incluso nella cartella:
+Il codice e' incluso nella cartella:
 
 ```text
 /addons/rethink_lan/app
@@ -20,140 +24,164 @@ Il `Dockerfile` copia `app/`, installa le dipendenze npm, compila TypeScript e p
 /opt/rethink/dist/rethink-cloud.js
 ```
 
-Quindi non c'e' piu' un `git clone` durante l'installazione dell'add-on.
+Non c'e' nessun `git clone` durante l'installazione dell'add-on.
 
-## Opzioni principali
+## Opzioni
 
 ### `hostname`
 
-Nome DNS locale usato nel certificato e dagli elettrodomestici LG. Non usare un IP.
+Nome DNS usato nel certificato e dagli elettrodomestici LG. Non usare un indirizzo IP.
 
-Esempio:
+Default:
 
 ```text
-rethink.lan
+common.lgthinq.com
 ```
+
+E' lo stesso nome a cui gli apparecchi LG cercano di collegarsi: tenendolo cosi' basta
+dirottare quel nome sul box (vedi [Far arrivare l'apparecchio qui](#far-arrivare-lapparecchio-qui)).
 
 ### `mqtt_url`
 
 URL del broker MQTT di Home Assistant.
 
-Se lasci vuoto, l'add-on prova prima il servizio MQTT di Home Assistant OS; se non lo trova usa:
+Se lo lasci vuoto, l'add-on prova prima il servizio MQTT di Home Assistant OS; se non lo
+trova usa `mqtt://core-mosquitto:1883`.
+
+Puoi anche scrivere solo host o host e porta: l'add-on lo normalizza da solo. Sono tutti
+validi:
 
 ```text
-mqtt://core-mosquitto:1883
+192.168.1.10
+192.168.1.10:1883
+mqtt://192.168.1.10:1883
 ```
 
-Puoi anche inserire solo host/IP: l'add-on lo normalizza automaticamente.
+### `mqtt_user`, `mqtt_pass`
 
-Esempi validi:
+Credenziali del broker MQTT. Se le lasci vuote e il servizio MQTT di Home Assistant OS e'
+disponibile, l'add-on usa quelle.
 
-```text
-192.168.50.165
-192.168.50.165:1883
-mqtt://192.168.50.165:1883
-```
+### `discovery_prefix`
+
+Prefisso della discovery MQTT di Home Assistant. Default `homeassistant`: cambialo solo se
+l'hai cambiato anche in Home Assistant.
+
+### `rethink_prefix`
+
+Prefisso dei topic MQTT usati da questo add-on. Default `rethink`.
+
+### `https_port`
+
+Porta HTTPS del server ThinQ locale. Default `443`.
+
+Gli apparecchi LG cercano `common.lgthinq.com:443`, quindi la scelta e' fra:
+
+- `https_port: 443`, se la porta 443 e' libera su Home Assistant (il default, ed e' la via
+  piu' semplice);
+- una porta diversa piu' un redirect `443 -> porta` sul router.
 
 ### `mqtts_port`
 
-Porta MQTT TLS privata usata dai dispositivi LG. Default upstream: `8884`.
+Porta MQTT TLS usata dagli apparecchi LG. Default `8883`.
 
 Se nei log vedi:
 
 ```text
-EADDRINUSE: address already in use :::8884
+EADDRINUSE: address already in use :::8883
 ```
 
-significa che un altro servizio su Home Assistant OS sta gia' usando quella porta. Le soluzioni sono:
+un altro servizio sta gia' usando quella porta. Puoi spegnere l'altro add-on oppure
+cambiare `mqtts_port` a una porta libera.
 
-- spegnere o disinstallare l'altro add-on/servizio che usa `8884`
-- cambiare `mqtts_port` a una porta libera, ad esempio `8885`
-
-Se hai gia' completato il pairing di un dispositivo LG con la vecchia porta, cambiare questa opzione puo' richiedere un nuovo provisioning del dispositivo.
+Attenzione: se un apparecchio e' gia' abbinato con la porta vecchia, cambiarla puo'
+richiedere di rifare il provisioning.
 
 ### `mqtt_port`
 
-Porta MQTT non TLS privata usata per appliance/debug. Default: `1884`.
-
-Se occupata, puoi cambiarla ad esempio a `1885`.
-
-### `https_port`
-
-Porta HTTPS del server ThinQ locale. Default: `4433`.
-
-Per il provisioning iniziale dei dispositivi LG serve far arrivare `common.lgthinq.com:443` a questa porta. Puoi usare:
-
-- `https_port: 443`, se la porta 443 e' libera su Home Assistant
-- NAT/redirect `443 -> 4433`, se lasci il default
+Porta MQTT non TLS, per debug e uso interno. Default `1886`. Se e' occupata, cambiala.
 
 ### `management_port`
 
-Porta della UI di gestione. Default:
+Porta della pagina di gestione. Default `44401`:
 
 ```text
-44401
+http://INDIRIZZO_HOME_ASSISTANT:44401
 ```
 
-Apri:
-
-```text
-http://HOME_ASSISTANT_IP:44401
-```
+Da li' si vedono gli apparecchi collegati, i pacchetti in tempo reale e si accende il ponte
+verso il cloud LG.
 
 ### `enable_lg_cloud_bridge`
 
-Default: `false`.
+Default `false`.
 
-Lascialo `false` per uso LAN-only. Mettilo `true` solo se vuoi usare la modalita' bridge opzionale verso il cloud LG reale.
+Lascialo `false` per il solo uso locale. Mettilo `true` se vuoi che l'apparecchio resti
+raggiungibile **anche** dall'app ufficiale LG: l'add-on fa da ponte fra la macchina e il
+cloud vero.
 
-### Auto setup
+Due cose da sapere:
 
-L'add-on puo' provare a lanciare automaticamente `rethink-setup` senza usare un PC esterno.
+- la registrazione al cloud si fa una volta sola dalla pagina di gestione, e le credenziali
+  restano su disco anche dopo un riavvio;
+- il telefono con l'app LG deve stare **fuori** dalla riscrittura DNS, altrimenti cerca il
+  cloud e trova il box. Con i dati mobili funziona.
 
-Opzioni:
+Una volta registrato, l'interruttore **Ponte al cloud LG** in Home Assistant lo sospende e
+lo riprende senza cancellare la registrazione. Il tasto nella pagina di gestione fa un'altra
+cosa: cancella il certificato e obbliga a rifare tutta la procedura.
 
-```yaml
-auto_setup_enabled: true
-auto_setup_device_host: "192.168.120.254"
-auto_setup_wifi_ssid: "NOME_WIFI"
-auto_setup_wifi_password: "PASSWORD_WIFI"
-auto_setup_delay: 10
-auto_setup_timeout: 20
-auto_setup_run_once: true
-```
+### `cloud_style_availability`
 
-`auto_setup_device_host` puo' essere:
+Default `false`.
 
-- `192.168.120.254` quando il dispositivo LG e' in modalita' Wi-Fi setup/AP
-- l'IP del dispositivo sulla tua LAN, se quel modello mantiene aperta la porta setup `5500`
+Con `false` le entita' diventano non disponibili appena l'apparecchio chiude la sessione
+MQTT. Con `true` restano disponibili con l'ultimo stato noto finche' l'add-on gira, e il
+sonno profondo dell'apparecchio si vede solo nel sensore "Connected" — come fa il cloud LG.
 
-Se il dispositivo e' gia' in rete ma non accetta piu' comandi setup sulla porta `5500`, l'add-on non puo' riscriverlo da solo. In quel caso serve fare in modo che il dispositivo chiami rethink invece del cloud LG:
+### `push_program_to_appliance`
 
-```text
-common.lgthinq.com -> IP_HOME_ASSISTANT
-```
+Default `false`.
 
-Poi riavvia fisicamente il dispositivo LG. Se usa `https_port: 4433`, aggiungi anche un redirect:
-
-```text
-443 -> 4433
-```
-
-Questo non e' un limite di Home Assistant: il modulo LG non espone una normale API LAN da cui importare dispositivi gia' registrati al cloud.
-
-Se nei log resta fermo su `Request: deviceinfo`, aumenta `auto_setup_timeout` a `40` oppure considera il tentativo fallito: il dispositivo e' raggiungibile, ma non sta rispondendo alla procedura setup sulla LAN.
+Con `true`, scegliere un programma in Home Assistant lo scrive **subito** sulla macchina, a
+cesto fermo, invece di aspettare l'avvio.
 
 ### `log_filter`
 
-Lista separata da virgole degli argomenti di log di rethink.
-
-Default:
+Elenco separato da virgole degli argomenti di log. Default:
 
 ```text
 status,incoming,HTTPS,publish,MGMT
 ```
 
-## Se non compare nello store
+Aggiungi `bridge` per vedere anche il traffico da e verso il cloud LG.
+
+## Far arrivare l'apparecchio qui
+
+L'apparecchio va convinto a cercare questo add-on invece del cloud LG. Si fa con una
+riscrittura DNS sul server DNS di casa (AdGuard Home, Pi-hole, il router):
+
+```text
+common.lgthinq.com -> INDIRIZZO_HOME_ASSISTANT
+```
+
+Poi togli e rimetti corrente all'apparecchio. Se non usi `https_port: 443`, aggiungi anche
+un redirect `443 -> porta scelta`.
+
+Se l'apparecchio non e' ancora abbinato, l'abbinamento va fatto con l'app ufficiale LG
+oppure con `rethink-setup` da un PC, con l'apparecchio in modalita' punto d'accesso Wi-Fi.
+
+### Perche' non c'e' un abbinamento automatico
+
+C'era, ed e' stato tolto il 22 luglio 2026. Con l'abbinamento automatico acceso, **ogni**
+avvio dell'add-on bussava alla porta di provisioning `5500` dell'apparecchio, e questo
+stordiva il modem LG: misurato, 17 minuti per tornare in rete contro i 76 secondi che ci
+mette senza. Non vale il prezzo, e l'abbinamento si fa una volta sola.
+
+Non e' un limite di Home Assistant: il modulo LG non espone una normale API locale da cui
+importare un apparecchio gia' registrato al cloud.
+
+## Se l'add-on non compare nello store
 
 Controlla che il percorso sia esattamente:
 
@@ -161,11 +189,8 @@ Controlla che il percorso sia esattamente:
 /addons/rethink_lan/config.yaml
 ```
 
-Poi fai:
+Poi: **Impostazioni → Add-on → Store**, menu in alto a destra, **Controlla aggiornamenti**,
+e ricarica la pagina forzando l'aggiornamento del browser.
 
-1. Settings > Apps / Add-ons > App store
-2. menu in alto a destra
-3. Check for updates
-4. refresh forzato del browser
-
-Se ancora non compare, apri i log del Supervisor: di solito c'e' una riga che indica quale campo di `config.yaml` non ha passato la validazione.
+Se ancora non compare, apri i log del Supervisor: di solito c'e' una riga che dice quale
+campo di `config.yaml` non ha passato la validazione.

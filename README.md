@@ -15,8 +15,7 @@ https://github.com/cash83/rethink-lan-addon
 ```
 
 Then install **LG LAN** from the list. The full guide, including the DNS rewrite needed to
-point `*.lgthinq.com` at your box, is in [`rethink_lan/DOCS.md`](rethink_lan/DOCS.md)
-(Italian).
+point `*.lgthinq.com` at your box, is in [`rethink_lan/DOCS.en.md`](rethink_lan/DOCS.en.md).
 
 ## The RC90U2 dryer
 

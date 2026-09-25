@@ -1,5 +1,5 @@
 name: "LG LAN"
-version: "0.2.60"
+version: "0.2.61"
 slug: "rethink_lan"
 description: "Bundled local LAN server for LG ThinQ devices with Home Assistant MQTT discovery."
 url: "https://github.com/anszom/rethink"
