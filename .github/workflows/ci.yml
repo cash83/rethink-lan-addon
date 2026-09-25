@@ -1,0 +1,53 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+    pull_request:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.event.pull_request.number || github.ref }}
+    cancel-in-progress: true
+
+defaults:
+    run:
+        working-directory: rethink_lan/app
+
+jobs:
+    checks:
+        name: Node ${{ matrix.node-version }}
+        runs-on: ubuntu-latest
+
+        strategy:
+            fail-fast: false
+            matrix:
+                node-version: [20, 24]
+
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: npm
+                  cache-dependency-path: rethink_lan/app/package-lock.json
+
+            - name: Install dependencies
+              run: npm ci
+              env:
+                  SKIP_GIT_HOOKS: '1'
+
+            - name: Check formatting
+              run: npx prettier . --check --ignore-path .gitignore
+
+            - name: Build
+              run: npm run build
+
+            - name: Test
+              run: npm run test

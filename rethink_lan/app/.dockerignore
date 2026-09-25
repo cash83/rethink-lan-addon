@@ -1,0 +1,7 @@
+.git
+node_modules
+dist
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+.DS_Store

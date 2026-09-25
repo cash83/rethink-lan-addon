@@ -1,0 +1,37 @@
+{
+  "type": "module",
+  "dependencies": {
+    "express": "^4.22.1",
+    "fast-xml-parser": "^5.3.3",
+    "mqtt": "^5.3.0",
+    "mqtt-connection": "^4.1.0",
+    "node-fetch": "^3.3.2",
+    "tiny-typed-emitter": "^2.1.0",
+    "websocket-express": "^4.0.1",
+    "ws": "^8.19.0"
+  },
+  "engines": {
+    "node": ">=16.0.0 <18.0.0 || >=20.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
+    "prettier": "^3.8.3",
+    "pretty-quick": "^4.2.2",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^3.14.0",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && cp -r html dist/",
+    "dev": "tsx rethink-cloud.ts",
+    "start": "node dist/rethink-cloud.js",
+    "format": "npx prettier . --write",
+    "postinstall": "node scripts/install-git-hooks.mjs",
+    "test": "node --import tsx --test --test-reporter=spec $(find tests -name '*.test.ts')"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npx pretty-quick --staged"
+  }
+}

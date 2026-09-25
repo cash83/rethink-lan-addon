@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "outDir": "dist",
+    "allowJs": true,
+    "esModuleInterop": true,
+    "lib": ["es2021"],
+    "target": "es2021",
+
+    "paths": { "@/*": ["./*"] },
+
+    "strict": true,
+    "noUncheckedSideEffectImports": true,
+    "skipLibCheck": true
+  },
+
+  "include": ["./**/*.ts"],
+  "exclude": ["dist", "node_modules"],
+
+  "tsc-alias": {
+    "resolveFullPaths": true
+  }
+}

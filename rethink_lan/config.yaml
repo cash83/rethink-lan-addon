@@ -1,0 +1,48 @@
+name: "LG LAN"
+version: "0.2.60"
+slug: "rethink_lan"
+description: "Bundled local LAN server for LG ThinQ devices with Home Assistant MQTT discovery."
+url: "https://github.com/anszom/rethink"
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: services
+boot: auto
+init: false
+stage: stable
+host_network: true
+services:
+  - mqtt:want
+options:
+  hostname: "common.lgthinq.com"
+  mqtt_url: ""
+  mqtt_user: ""
+  mqtt_pass: ""
+  discovery_prefix: "homeassistant"
+  rethink_prefix: "rethink"
+  https_port: 443
+  mqtts_port: 8883
+  mqtt_port: 1886
+  management_port: 44401
+  enable_lg_cloud_bridge: false
+  cloud_style_availability: false
+  push_program_to_appliance: false
+  log_filter: "status,incoming,HTTPS,publish,MGMT"
+schema:
+  hostname: str
+  mqtt_url: str?
+  mqtt_user: str?
+  mqtt_pass: password?
+  discovery_prefix: str
+  rethink_prefix: str
+  https_port: port
+  mqtts_port: port
+  mqtt_port: port
+  management_port: port
+  enable_lg_cloud_bridge: bool
+  cloud_style_availability: bool
+  push_program_to_appliance: bool
+  log_filter: str
