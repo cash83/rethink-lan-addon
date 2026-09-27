@@ -1,3 +1,7 @@
+## 0.2.62
+
+- Nuovo sensore **Minuti residui**: gli stessi minuti di "Tempo residuo", ma come numero. Quello formattato sopra l'ora scrive `1:20`, che si legge bene ma non si puo' confrontare: una soglia o un'automazione ci si blocca (e' successo davvero, a un helper soglia che e' rimasto `unknown` per tutta la prima ora di ogni ciclo). Questo invece e' sempre un numero, con unita' `min` e `state_class: measurement`, quindi si puo' usare nei conti e nei grafici.
+
 ## 0.2.61
 
 - **Documentazione corretta e tradotta.** Descriveva un blocco di opzioni `auto_setup_*` che non esistono piu': quella funzione e' stata tolta il 22/07/2026 perche' a ogni avvio dell'addon bussava alla porta di provisioning dell'apparecchio e stordiva il modem LG (misurato: 17 minuti per tornare in rete contro 76 secondi senza). Chi copiava quel blocco prendeva un errore di validazione.

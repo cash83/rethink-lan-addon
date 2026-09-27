@@ -565,6 +565,20 @@ export default class Device extends AABBDevice {
                         name: 'Tempo residuo',
                         icon: 'mdi:timer-sand',
                     },
+                    // Gli stessi minuti di 'Tempo residuo', ma come numero. Quello
+                    // formattato sopra l'ora scrive '1:20', che si legge bene ma non
+                    // si puo' confrontare: una soglia o un'automazione ci si blocca.
+                    // Questo invece e' sempre un numero e si puo' usare nei conti.
+                    remaining_minutes: {
+                        platform: 'sensor',
+                        unique_id: '$deviceid-remaining-minutes',
+                        state_topic: '$this/remaining_minutes',
+                        name: 'Minuti residui',
+                        icon: 'mdi:timer-sand',
+                        unit_of_measurement: 'min',
+                        device_class: 'duration',
+                        state_class: 'measurement',
+                    },
                     elapsed_time: {
                         platform: 'sensor',
                         unique_id: '$deviceid-elapsed-time',
@@ -1161,6 +1175,7 @@ export default class Device extends AABBDevice {
         }
         this.publishProperty('selected_time', selectedTime)
         this.publishProperty('remaining_time', remainingTime)
+        this.publishProperty('remaining_minutes', remainingMinutes)
         // NOTE: rec[20] is not an elapsed-minutes byte (nor the modem uptime the
         // old comment here claimed): it is the low half of the cycle energy above.
         // Elapsed time is derived arithmetically instead.

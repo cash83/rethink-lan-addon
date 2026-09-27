@@ -235,6 +235,12 @@ describe(MODEL_ID, () => {
         thinq.emit('data', SAMPLE_IDLE)
         assert.equal(ha.devices[DEVICE_ID].properties.eta, 'None')
 
+        // Lo stesso tempo, ma come numero: sopra l'ora 'Tempo residuo' scrive
+        // '1:20' e non e' confrontabile, questo resta 80 e si puo' usare.
+        thinq.emit('data', buf('aa2130eb001901021e00000700030102000000000005000000000000006b00c8bb'))
+        assert.equal(ha.devices[DEVICE_ID].properties.remaining_time, '2:30')
+        assert.equal(ha.devices[DEVICE_ID].properties.remaining_minutes, 150)
+
         // il campione in pausa ha 43 minuti di residuo
         const prima = Date.now()
         thinq.emit('data', SAMPLE_PAUSED)
