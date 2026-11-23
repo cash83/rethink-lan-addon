@@ -1,5 +1,5 @@
 name: "LG LAN"
-version: "0.2.62"
+version: "0.3.0"
 slug: "rethink_lan"
 description: "Bundled local LAN server for LG ThinQ devices with Home Assistant MQTT discovery."
 url: "https://github.com/anszom/rethink"
@@ -30,6 +30,7 @@ options:
   enable_lg_cloud_bridge: false
   cloud_style_availability: false
   push_program_to_appliance: false
+  bridge_dns: ""
   log_filter: "status,incoming,HTTPS,publish,MGMT"
 schema:
   hostname: str
@@ -45,4 +46,5 @@ schema:
   enable_lg_cloud_bridge: bool
   cloud_style_availability: bool
   push_program_to_appliance: bool
+  bridge_dns: str?
   log_filter: str

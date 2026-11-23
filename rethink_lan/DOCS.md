@@ -146,6 +146,22 @@ Default `false`.
 Con `true`, scegliere un programma in Home Assistant lo scrive **subito** sulla macchina, a
 cesto fermo, invece di aspettare l'avvio.
 
+### `bridge_dns`
+
+Default vuoto.
+
+Serve solo col ponte al cloud LG acceso. Gli apparecchi trovano questo add-on perche' i nomi
+`*.lgthinq.com` sono dirottati sul box (da AdGuard, qui in casa): ma quel dirottamento vale
+anche per il box stesso, quindi il ponte, lasciato al risolutore di sistema, si ricollegherebbe
+a se' stesso invece che al cloud LG. Qui si indicano i risolutori che il ponte usa per le sue
+connessioni in uscita, separati da virgole: indirizzi di server DNS (anche `host:porta`) o URL
+DNS-over-HTTPS. Si provano in ordine fino al primo che risponde. Vuoto: risolutore di sistema,
+come prima.
+
+```text
+1.1.1.1, https://dns.google/dns-query
+```
+
 ### `log_filter`
 
 Elenco separato da virgole degli argomenti di log. Default:

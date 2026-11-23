@@ -1,9 +1,16 @@
-import { spawn } from 'node:child_process'
 import { Router } from 'express'
-import { CA, Config } from '@/util/config'
+import { Config } from '@/util/config'
+import { CA } from '@/util/ca'
+import log from '@/util/logging'
 import { ClipDeployMessage } from './clip'
 
-export function routes(config: Config, ca: CA) {
+/**
+ * `rootCertificate` e' quello che diciamo ai dispositivi di fidarsi: la nostra CA, a meno
+ * che davanti a noi ci sia un proxy TLS che presenta un certificato di un'altra catena e
+ * ne sia stata configurata la radice. Il resto non cambia: i certificati dei dispositivi
+ * li firmiamo sempre con la nostra CA.
+ */
+export function routes(config: Config, ca: CA, rootCertificate = ca.cert) {
     const router = Router()
     router.get('/route', (req, res) => {
         res.json({
@@ -17,43 +24,27 @@ export function routes(config: Config, ca: CA) {
 
     router.get('/route/certificate', (req, res) => {
         if (req.query.name) {
-            res.json({ resultCode: '0000', result: { certificatePem: ca.cert } })
+            res.json({ resultCode: '0000', result: { certificatePem: rootCertificate } })
         } else {
             res.json({ resultCode: '0000', result: ['common-server', 'aws-iot'] })
         }
     })
 
     router.post('/device/:deviceId/certificate', (req, res) => {
-        const x509 = spawn('openssl', [
-            'x509',
-            '-req',
-            '-in',
-            '-',
-            '-days',
-            '3650',
-            '-CA',
-            config.ca_cert_file,
-            '-CAkey',
-            config.ca_key_file,
-            '-set_serial',
-            '0100',
-            '-out',
-            '-',
-        ])
-        const out: Buffer[] = []
-        x509.stdout.on('data', (data: Buffer) => {
-            out.push(data)
-        })
-        x509.stderr.on('data', () => {})
-        x509.on('close', (code) => {
-            // Warning: we don't supply MQTT topics at this point. Maybe we should?
-            // OTOH, the firmware seems to ignore it outright...
-            res.json({
-                resultCode: '0000',
-                result: { certificatePem: Buffer.concat(out).toString('utf-8').replace(/\r/g, '') },
-            })
-        })
-        x509.stdin.end(req.body.csr)
+        // 0x64 e' quello che openssl faceva del `-set_serial 0100` che gli passavamo
+        // (legge i valori senza prefisso come decimali). Ogni dispositivo prende lo
+        // stesso seriale, come prima.
+        ca.signCertificateRequest(String(req.body.csr), '64').then(
+            (certificatePem) => {
+                // Warning: we don't supply MQTT topics at this point. Maybe we should?
+                // OTOH, the firmware seems to ignore it outright...
+                res.json({ resultCode: '0000', result: { certificatePem } })
+            },
+            (err) => {
+                log('status', `Failed to sign a certificate for ${req.params.deviceId}: ${err}`)
+                res.status(500).json({ resultCode: '9999', result: {} })
+            },
+        )
     })
     return router
 }

@@ -105,19 +105,12 @@ export OPTIONS_FILE
 mkdir -p /data
 
 # The LG modem connects to its cached cloud hostnames (e.g.
-# common.iot.eic.lgthinq.com for MQTT) and validates the server
-# certificate against that hostname. The app only generates a
-# CN=<hostname> certificate, so we pre-generate one here with SANs
-# covering every *.lgthinq.com name the firmware may use.
-CA_KEY="/data/ca.key"
-CA_CERT="/data/ca.cert"
-SAN_LIST="DNS:${RETHINK_HOSTNAME},DNS:*.lgthinq.com,DNS:*.eic.lgthinq.com,DNS:*.iot.eic.lgthinq.com,DNS:common.iot.eic.lgthinq.com"
-
-if [ ! -f "${CA_CERT}" ] || ! openssl x509 -in "${CA_CERT}" -noout -text 2>/dev/null | grep -q 'DNS:\*.iot.eic.lgthinq.com'; then
-  log "Generating CA certificate with LG ThinQ SANs (${SAN_LIST})"
-  openssl req -x509 -newkey rsa:4096 -keyout "${CA_KEY}" -out "${CA_CERT}" -sha256 -days 3650 -nodes \
-    -subj "/CN=${RETHINK_HOSTNAME}" -addext "subjectAltName=${SAN_LIST}"
-fi
+# common.iot.eic.lgthinq.com for MQTT) and validates the server certificate
+# against that hostname. The app signs a server certificate itself now (no
+# openssl in the image any more), so the only thing it needs from us is the
+# list of names to put in it - see extra_server_names below. The CA in
+# /data/ca.key + /data/ca.cert is created by the app on first run and must
+# never be replaced: every appliance already provisioned has it pinned.
 
 node --input-type=module <<'NODE'
 import fs from "node:fs";
@@ -143,6 +136,15 @@ const logFilter = stringOption("log_filter", "status,incoming,HTTPS,publish,MGMT
   .map((item) => item.trim())
   .filter(Boolean);
 
+// Resolvers for the bridge's own outgoing connections. The appliances find us because the
+// ThinQ names are redirected, and the same redirect applies to this host: left to the
+// system resolver, the bridge would call rethink back instead of the LG cloud. Each entry
+// is a DNS server (optionally host:port) or a DNS-over-HTTPS URL; empty = system resolver.
+const bridgeDns = stringOption("bridge_dns", "")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+
 const config = {
   hostname: process.env.RETHINK_HOSTNAME,
   homeassistant: {
@@ -156,6 +158,15 @@ const config = {
   },
   ca_key_file: "/data/ca.key",
   ca_cert_file: "/data/ca.cert",
+  // Names the firmware may ask for, beyond our own hostname. A device that sends SNI
+  // gets a certificate minted for whatever it asked for; one that does not falls back
+  // to this list.
+  extra_server_names: [
+    "*.lgthinq.com",
+    "*.eic.lgthinq.com",
+    "*.iot.eic.lgthinq.com",
+    "common.iot.eic.lgthinq.com"
+  ],
   https_port: numberOption("https_port", 4433),
   mqtts_port: numberOption("mqtts_port", 8884),
   mqtt_port: numberOption("mqtt_port", 1884),
@@ -212,6 +223,7 @@ if (options.enable_lg_cloud_bridge === true) {
   config.bridge = {
     storage_path: bridgeStoragePath
   };
+  if (bridgeDns.length) config.bridge.dns = bridgeDns;
 }
 
 fs.writeFileSync(process.env.CONFIG_FILE, JSON.stringify(config, null, 2));

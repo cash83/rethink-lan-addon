@@ -1,7 +1,6 @@
 import express from 'express'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import * as https from 'node:https'
-import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { Broker } from './cloud/mqtt-broker'
 import * as tls from 'node:tls'
@@ -13,13 +12,16 @@ import { DeviceAcceptor as T1Acceptor } from './cloud/thinq1/device'
 import { DeviceAcceptor as T2Acceptor } from './cloud/thinq2/device'
 import { Connection as HA_connection } from './cloud/homeassistant'
 import HA_bridge from './cloud/ha_bridge'
-import { Config, CA } from './util/config'
+import { Config } from './util/config'
+import { CA } from './util/ca'
+import { CertificateIssuer } from './util/sni'
 import * as Management from './management'
 
 import log, { setFilter as setLogFilter } from './util/logging'
 import { DeviceManager } from './cloud/devmgr'
 import { Bridge } from './bridge'
 import { JSONStorage } from './bridge/state'
+import { setServers as setResolverServers } from './bridge/resolver'
 
 const configPath = resolve(process.argv[2] ?? './config.json')
 const configDir = dirname(configPath)
@@ -27,6 +29,7 @@ const config = JSON.parse(readFileSync(configPath).toString('utf-8')) as Config
 
 config.ca_key_file = resolve(configDir, config.ca_key_file)
 config.ca_cert_file = resolve(configDir, config.ca_cert_file)
+if (config.custom_root_cert_file) config.custom_root_cert_file = resolve(configDir, config.custom_root_cert_file)
 if (config.bridge) config.bridge.storage_path = resolve(configDir, config.bridge.storage_path)
 
 if (!config.log) config.log = ['status', 'incoming', 'HTTPS']
@@ -36,42 +39,29 @@ setLogFilter((topic) => {
     return enabled[topic] || enabled['all']
 })
 
-// if you add spaces here, you will have to fix quoting in the code below
-// the CA is also the server
-function loadOrCreateCert(): CA {
-    let keypem: string, certpem: string
+const ca = await CA.loadOrCreate(config.ca_key_file, config.ca_cert_file)
+
+// La CA firma i certificati del server, non e' piu' lei stessa il certificato: alcuni
+// elettrodomestici rifiutano un certificato che e' anche la loro radice di fiducia, e un
+// elettrodomestico che ci raggiunge per dirottamento DNS chiede un nome LG, non il nostro.
+// Ogni listener TLS serve una foglia per config.hostname e ne coina una su richiesta per
+// qualunque nome gli venga chiesto.
+const issuer = new CertificateIssuer(ca, config.hostname, config.extra_server_names)
+
+// Letta adesso, non a ogni richiesta: un file mancante o illeggibile deve fermarci
+// all'avvio invece di consegnare una radice di fiducia rotta al primo dispositivo che
+// la chiede. Viene servita cosi' com'e', e ne controlliamo solo il primo blocco.
+function loadRootCertificate(file: string): string {
+    const pem = readFileSync(file).toString('utf-8')
     try {
-        keypem = readFileSync(config.ca_key_file).toString('utf-8')
-        certpem = readFileSync(config.ca_cert_file).toString('utf-8')
-
-        if (!new X509Certificate(certpem).checkHost(config.hostname))
-            throw new Error('invalid subject, creating new certificate')
+        new X509Certificate(pem)
     } catch (err) {
-        log('status', 'Creating a new key/certificate for the CA')
-        spawnSync('openssl', [
-            'req',
-            '-x509',
-            '-newkey',
-            'rsa:4096',
-            '-keyout',
-            config.ca_key_file,
-            '-out',
-            config.ca_cert_file,
-            '-sha256',
-            '-days',
-            '3650',
-            '-nodes',
-            '-subj',
-            '/CN=' + config.hostname,
-        ])
-        keypem = readFileSync(config.ca_key_file).toString('utf-8')
-        certpem = readFileSync(config.ca_cert_file).toString('utf-8')
+        throw new Error(`${file} is not a certificate: ${err}`)
     }
-
-    return { key: keypem, cert: certpem }
+    return pem
 }
 
-const ca = loadOrCreateCert()
+const rootCertificate = config.custom_root_cert_file ? loadRootCertificate(config.custom_root_cert_file) : ca.cert
 
 // The LG QCA4010 modem caches TLS session tickets and tries to resume them on
 // reconnect. If the server was restarted its ticket keys are gone and the
@@ -93,7 +83,9 @@ function loadOrCreateTicketKeys(): Buffer {
 }
 
 const ticketKeys = loadOrCreateTicketKeys()
-const tlsOptions = { ...ca, ticketKeys }
+// I ticketKeys sono roba nostra (vedi sopra): vanno tenuti insieme alle opzioni del
+// certificato, altrimenti il modem QCA4010 resta muto per minuti dopo ogni riavvio.
+const tlsOptions = { ...(await issuer.listenerOptions()), ticketKeys }
 
 // Thinq1
 function t1setup(manager: DeviceManager) {
@@ -128,7 +120,7 @@ function t2setup(manager: DeviceManager) {
         next()
     })
 
-    app.use(thinq2Routes(config, ca))
+    app.use(thinq2Routes(config, ca, rootCertificate))
 
     // fallback
     app.use((req, res) => {
@@ -170,6 +162,7 @@ t2setup(manager)
 let bridge: Bridge | undefined
 if (config.bridge) {
     mkdirSync(config.bridge.storage_path, { recursive: true })
+    setResolverServers(config.bridge.dns)
     const storage = new JSONStorage(config.bridge.storage_path)
     bridge = new Bridge(storage, manager)
 

@@ -147,6 +147,22 @@ Default `false`.
 With `true`, choosing a programme in Home Assistant writes it to the appliance **straight
 away**, with the drum stopped, instead of waiting for the start command.
 
+### `bridge_dns`
+
+Empty by default.
+
+Only matters with the LG cloud bridge on. The appliances find this add-on because the
+`*.lgthinq.com` names are redirected to the Home Assistant host: that redirect applies to the
+host itself too, so the bridge, left to the system resolver, would connect back to itself
+instead of to the LG cloud. List here the resolvers the bridge uses for its own outgoing
+connections, comma separated: DNS server addresses (`host:port` is accepted) or
+DNS-over-HTTPS URLs. They are tried in order until one answers. Empty means the system
+resolver, as before.
+
+```text
+1.1.1.1, https://dns.google/dns-query
+```
+
 ### `log_filter`
 
 Comma-separated list of log topics. Default:

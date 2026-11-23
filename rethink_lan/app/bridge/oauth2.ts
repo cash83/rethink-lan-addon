@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import fetch from 'node-fetch'
+import { agent } from './resolver'
 
 const OAUTH2_SECRET = Buffer.from('c053c2a6ddeb7ad97cb0eed0dcb31cf8')
 
@@ -31,6 +32,7 @@ export async function signedRequest<T = unknown>(
         },
         method: body !== undefined ? 'POST' : 'GET',
         body,
+        agent,
     })
     return (await resp.json()) as T
 }

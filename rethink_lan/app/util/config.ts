@@ -3,6 +3,14 @@ export type Config = {
     homeassistant: HAConfig
     ca_key_file: string
     ca_cert_file: string
+    /** Una root da dare ai dispositivi al posto di quella della nostra CA, vedi config.json. */
+    custom_root_cert_file?: string
+    /**
+     * Nomi in piu' da mettere nel certificato TLS predefinito, oltre a `hostname`. Il modem
+     * LG si collega al nome del cloud che ha in cache (es. common.iot.eic.lgthinq.com) e
+     * controlla il certificato contro quello: se non manda l'SNI, serve qui.
+     */
+    extra_server_names?: string[]
     https_port: number
     mqtts_port: number
     mqtt_port: number
@@ -12,6 +20,8 @@ export type Config = {
     mqtt?: boolean
     bridge?: {
         storage_path: string
+        /** Risolutori per le connessioni in uscita del ponte, vedi bridge/resolver.ts. */
+        dns?: string[]
     }
     log?: string[]
 }
@@ -32,9 +42,4 @@ export type HAConfig = {
     // its own knob until it is switched off and on again, and on the RC90U2 it
     // also loses the wrap-around of the dial (measured 2026-09-25).
     push_program_to_appliance?: boolean
-}
-
-export type CA = {
-    key: string
-    cert: string
 }

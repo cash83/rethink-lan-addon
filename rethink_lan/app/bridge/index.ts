@@ -175,7 +175,12 @@ export class Bridge extends TypedEmitter<BridgeEvents> {
         const dev = this.manager.allDevices[id]
         if (!dev) return false
 
-        const clientDevice = await this.register(dev, devType, statusCallback)
+        const creds = this.state.getCredentials()
+        if (!creds) return false
+        const client = new ThinqClient(creds.env)
+        await client.auth(creds.refreshToken)
+
+        const clientDevice = await this.register(client, dev, devType, statusCallback)
         if (!clientDevice) return false
 
         const bridged = new BridgedDevice(clientDevice, dev)
@@ -224,21 +229,25 @@ export class Bridge extends TypedEmitter<BridgeEvents> {
         this.emit('loggedOut')
     }
 
-    async register(device: AnyDevice, deviceType?: string, statusCallback?: StatusCallback) {
+    async register(client: ThinqClient, device: AnyDevice, deviceType?: string, statusCallback?: StatusCallback) {
         if (!statusCallback) statusCallback = () => {}
-
-        const creds = this.state.getCredentials()
-        if (!creds) throw new Error('Not logged in')
 
         if (!deviceType) deviceType = device.meta.deviceType
 
         if (!deviceType) throw new Error('Device type must be specified')
 
-        const client = new ThinqClient(creds.env)
-        await client.auth(creds.refreshToken)
+        // Se l'elettrodomestico e' gia' registrato su questo account non lo ri-aggiungiamo:
+        // il delete+addDevice lo faceva sparire dall'app ThinQ e tornare col nome "Rethink xxxxxxxx".
+        // Il materiale su cui gira il bridge (certificato, chiave, topic MQTT) viene da pair(),
+        // che a questo punto e' gia' stato eseguito. Da upstream 9b76e42 (anszom/rethink).
+        const hasDevice = (await client.listDevices()).find((dev) => dev.deviceId === device.id)
+        // Nome usato solo se lo aggiungiamo noi
+        const alias = `Rethink ${device.id.substring(0, 8)}`
 
-        statusCallback('Removing device from home')
-        await client.removeDevice(device.id)
+        if (!hasDevice) {
+            statusCallback('Removing device from home')
+            await client.removeDevice(device.id)
+        }
 
         let clientDevice: Thinq1Device | Thinq2Device
 
@@ -250,9 +259,11 @@ export class Bridge extends TypedEmitter<BridgeEvents> {
             }
 
             clientDevice = new Thinq1Device(device.id, device.meta, state)
-            statusCallback('Adding device to home')
 
-            await client.addDevice(clientDevice, `Rethink ${device.id.substring(0, 8)}`, deviceType)
+            if (!hasDevice) {
+                statusCallback('Adding device to home')
+                await client.addDevice(clientDevice, alias, deviceType)
+            }
         } else if (device.platform === 'thinq2') {
             statusCallback('Fetching otp key')
             const otp = await client.prepareNewT2Device()
@@ -269,8 +280,10 @@ export class Bridge extends TypedEmitter<BridgeEvents> {
                 throw err
             }
 
-            statusCallback('Adding device to home')
-            await client.addDevice(clientDevice, `Rethink ${device.id.substring(0, 8)}`, deviceType, ciphertext)
+            if (!hasDevice) {
+                statusCallback('Adding device to home')
+                await client.addDevice(clientDevice, alias, deviceType, ciphertext)
+            }
         } else {
             throw new Error('Unknown device platform')
         }

@@ -1,3 +1,42 @@
+## 0.3.0
+
+Riallineamento su tre punti presi dall'upstream (anszom/rethink), che da giugno e' andato
+avanti di 128 commit. Niente di tutto questo cambia il funzionamento dell'asciugatrice.
+
+- **Il ponte non ri-registra piu' l'elettrodomestico.** Accendere il ponte lo cancellava
+  dalla casa LG e lo riaggiungeva: sull'app ThinQ spariva e tornava chiamato
+  `Rethink xxxxxxxx` (visto davvero, il 25/09/2026). Non serviva a nulla: il materiale su
+  cui gira il ponte (certificato, chiave, topic MQTT) viene da `pair()`, che a quel punto e'
+  gia' stato eseguito. Ora, se l'elettrodomestico e' gia' nella casa, delete e addDevice si
+  saltano. Da upstream `9b76e42`.
+- **Niente piu' `openssl` nell'immagine.** Certificati, richieste e firma sono fatti dentro
+  al processo con `@peculiar/x509`: non si lanciano piu' sottoprocessi (ne' il `cat | openssl
+  req` che serviva perche' openssl non legge la chiave dallo stdin di node), e l'immagine
+  dell'addon e' un pacchetto piu' leggera. Da upstream `b5d4b73`.
+- **Un certificato per ogni nome richiesto.** La CA non e' piu' anche il certificato del
+  server: ne firma una foglia per `hostname` e ne conia una al volo per qualunque nome il
+  modem chieda via SNI (al massimo 64, e solo se somiglia a un nome di host). Da upstream
+  `709e85e`, `18edafe`.
+- **I nomi LG arrivano dalla configurazione** (`extra_server_names`, aggiunta nostra). Il
+  modem LG controlla il certificato contro il nome del cloud che ha in cache: prima quei
+  nomi ce li metteva `run.sh` pre-generando la CA con openssl e i suoi SAN, adesso finiscono
+  nel certificato predefinito passando per la configurazione. La CA in `/data` resta quella
+  di sempre: non viene toccata, e non va mai sostituita, perche' ogni apparecchio gia'
+  provisionato ce l'ha fissata dentro.
+- **DNS proprio per le connessioni in uscita del ponte** (`bridge.dns`, da upstream
+  `bb0d2c6`). Gli apparecchi trovano rethink perche' i nomi ThinQ sono dirottati, e la
+  stessa casa dirotta anche noi: lasciato al risolutore di sistema, il ponte si ricollegava a
+  rethink invece che al cloud LG. Si possono indicare server DNS o URL DNS-over-HTTPS; vuoto,
+  si usa il risolutore di sistema come prima.
+- **La root cert la chiediamo all'apiServer della regione** invece che sempre a
+  `common.lgthinq.com`: quello restituiva una radice valida solo per alcune regioni. Da
+  upstream `980b42e`.
+- Nuova opzione `bridge_dns`: i risolutori che il ponte usa per le sue connessioni in uscita
+  (server DNS o URL DNS-over-HTTPS, separati da virgole). Documentata in italiano e inglese.
+- Test: 300 (erano 258). I nuovi coprono la registrazione del ponte, il risolutore, l'SNI e
+  tutto il giro dei certificati con l'addon avviato per davvero - compreso il caso che ci
+  riguarda: un client che non manda l'SNI e controlla comunque il nome LG.
+
 ## 0.2.62
 
 - Nuovo sensore **Minuti residui**: gli stessi minuti di "Tempo residuo", ma come numero. Quello formattato sopra l'ora scrive `1:20`, che si legge bene ma non si puo' confrontare: una soglia o un'automazione ci si blocca (e' successo davvero, a un helper soglia che e' rimasto `unknown` per tutta la prima ora di ogni ciclo). Questo invece e' sempre un numero, con unita' `min` e `state_class: measurement`, quindi si puo' usare nei conti e nei grafici.

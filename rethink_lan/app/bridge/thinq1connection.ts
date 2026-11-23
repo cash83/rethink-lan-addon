@@ -6,6 +6,7 @@ import fetch from 'node-fetch'
 import * as HTTPS from 'node:https'
 import { randomUUID } from 'node:crypto'
 import log from '@/util/logging'
+import { lookup } from './resolver'
 
 type ConnectionEvents = {
     data: (payload: object) => void
@@ -39,7 +40,7 @@ export class Connection extends TypedEmitter<ConnectionEvents> {
                 'x-lgedm-devicetype': this.device.meta.deviceType!,
             },
             body: `<lgedmRoot><countryCode>WW</countryCode><modelName>${this.device.meta.modelName}</modelName><itemList><item>THINQ_TIME_SYNC_URI</item><elementList><elementCode>pushDetailYn</elementCode><elementValue>Y</elementValue></elementList></itemList></lgedmRoot>`,
-            agent: new HTTPS.Agent({ keepAlive: true, rejectUnauthorized: false }),
+            agent: new HTTPS.Agent({ keepAlive: true, rejectUnauthorized: false, lookup }),
         })
         await resp.text()
 
@@ -62,6 +63,7 @@ export class Connection extends TypedEmitter<ConnectionEvents> {
                 host,
                 port: Number(port),
                 rejectUnauthorized: false /*FIXME*/,
+                lookup,
             },
             () => {
                 log('bridge', `${this.device.deviceId} connected`)

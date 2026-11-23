@@ -29,8 +29,7 @@ LABEL \
 WORKDIR /opt/rethink
 
 RUN apk add --no-cache \
-    nodejs \
-    openssl
+    nodejs
 
 COPY --from=build /build/rethink/package.json /build/rethink/package-lock.json ./
 COPY --from=build /build/rethink/node_modules ./node_modules
